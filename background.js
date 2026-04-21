@@ -41,73 +41,88 @@ async function clearFolder(folderId) {
 }
 
 async function saveSession() {
-  console.log("Autosave started");
+    console.log("Autosave started");
 
-  const root = await getRootFolder();
-  await clearFolder(root.id);
+    const root = await getRootFolder();
+    const windows = await browser.windows.getAll({ populate: true });
 
-  const windows = await browser.windows.getAll({ populate: true });
+    for (const win of windows) {
+        await updateWindow(win, root.id);
+    }
 
-  for (const win of windows) {
-    const windowFolder = await browser.bookmarks.create({
-      title: `Window ${win.id}`,
-      parentId: root.id
-    });
+    console.log("Autosave completed");
+}
 
-    const groups = {};
+async function getOrCreateSubfolder(parentId, title) {
+    const children = await browser.bookmarks.getChildren(parentId);
+
+    for (const child of children) {
+        if (child.title === title && !child.url) return child;
+    }
+
+    return browser.bookmarks.create({ title, parentId });
+}
+
+async function updateWindow(win, rootId) {
+    const windowFolder = await getOrCreateSubfolder(
+        rootId,
+        `Window ${win.id}`
+    );
+
+    await clearFolder(windowFolder.id);
+
+    // sortujemy taby dokładnie jak na ekranie
+    const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
+
+    const groups = new Map();
     const ungrouped = [];
 
-    for (const tab of win.tabs) {
-      if (!tab.url || !tab.url.startsWith("http")) continue;
+    for (const tab of sortedTabs) {
+        if (!tab.url || !tab.url.startsWith("http")) continue;
 
-      const gid = tab.groupId;
+        if (tab.groupId && tab.groupId !== -1) {
+        if (!groups.has(tab.groupId)) {
+            groups.set(tab.groupId, []);
+        }
+        groups.get(tab.groupId).push(tab);
+        } else {
+        ungrouped.push(tab);
+        }
+    }
 
-      if (gid && gid !== -1) {
-        if (!groups[gid]) {
-          groups[gid] = {
-            title: `Group ${gid}`,
-            tabs: []
-          };
+    // tworzymy grupy w KOLEJNOŚCI z paska kart
+    let groupNumber = 1;
+
+    for (const tabs of groups.values()) {
+        const groupFolder = await browser.bookmarks.create({
+        title: `Group ${groupNumber}`,
+        parentId: windowFolder.id
+        });
+
+        for (const tab of tabs) {
+        await browser.bookmarks.create({
+            title: tab.title || tab.url,
+            url: tab.url,
+            parentId: groupFolder.id
+        });
         }
 
-        groups[gid].tabs.push(tab);
-      } else {
-        ungrouped.push(tab);
-      }
+        groupNumber++;
     }
 
-    // GROUPS
-    for (const group of Object.values(groups)) {
-      const groupFolder = await browser.bookmarks.create({
-        title: group.title,
-        parentId: windowFolder.id
-      });
-
-      for (const tab of group.tabs) {
-        await browser.bookmarks.create({
-          title: tab.title || tab.url,
-          url: tab.url,
-          parentId: groupFolder.id
-        });
-      }
-    }
-
-    // UNGROUPED
+    // ungrouped na końcu
     if (ungrouped.length > 0) {
-      const otherFolder = await browser.bookmarks.create({
+        const ungroupedFolder = await browser.bookmarks.create({
         title: "Ungrouped Tabs",
         parentId: windowFolder.id
-      });
-
-      for (const tab of ungrouped) {
-        await browser.bookmarks.create({
-          title: tab.title || tab.url,
-          url: tab.url,
-          parentId: otherFolder.id
         });
-      }
-    }
-  }
 
-  console.log("Autosave completed");
+        for (const tab of ungrouped) {
+        await browser.bookmarks.create({
+            title: tab.title || tab.url,
+            url: tab.url,
+            parentId: ungroupedFolder.id
+        });
+        }
+    }
 }
