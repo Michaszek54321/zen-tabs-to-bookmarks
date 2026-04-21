@@ -1,156 +1,113 @@
 let saveTimer = null;
-let lastSaveTime = 0;
+let lastSave = 0;
 
 const DEBOUNCE_MS = 5000;
-const MIN_TIME_BETWEEN_SAVES = 30000;
-const ROOT_FOLDER_TITLE = "Latest Autosave";
+const MIN_INTERVAL = 15000;
+const ROOT_TITLE = "Latest Autosave";
 
 browser.tabs.onCreated.addListener(scheduleSave);
+browser.tabs.onRemoved.addListener(scheduleSave);
+browser.tabs.onUpdated.addListener(scheduleSave);
+
 browser.browserAction.onClicked.addListener(saveSession);
 
 function scheduleSave() {
-    if (saveTimer) clearTimeout(saveTimer);
+  if (saveTimer) clearTimeout(saveTimer);
 
-    saveTimer = setTimeout(() => {
-        const now = Date.now();
-        if (now - lastSaveTime > MIN_TIME_BETWEEN_SAVES) {
-        saveSession();
-        lastSaveTime = now;
-        }
-    }, DEBOUNCE_MS);
+  saveTimer = setTimeout(() => {
+    const now = Date.now();
+    if (now - lastSave > MIN_INTERVAL) {
+      saveSession();
+      lastSave = now;
+    }
+  }, DEBOUNCE_MS);
 }
 
-async function getOrCreateSubfolder(parentId, title) {
-    const children = await browser.bookmarks.getChildren(parentId);
-    for (const child of children) {
-        if (child.title === title && !child.url) return child;
-    }
+async function getRootFolder() {
+  const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
 
-    return browser.bookmarks.create({
-        title,
-        parentId
-    });
-}
+  for (const item of existing) {
+    if (!item.url) return item;
+  }
 
-async function getOrCreateRootFolder() {
-    const existing = await browser.bookmarks.search({ title: ROOT_FOLDER_TITLE });
-
-    for (const item of existing) {
-        if (!item.url) return item; // folder
-    }
-
-    return browser.bookmarks.create({ title: ROOT_FOLDER_TITLE });
+  return browser.bookmarks.create({ title: ROOT_TITLE });
 }
 
 async function clearFolder(folderId) {
-    const children = await browser.bookmarks.getChildren(folderId);
-    for (const child of children) {
-        await browser.bookmarks.removeTree(child.id);
-    }
+  const children = await browser.bookmarks.getChildren(folderId);
+  for (const child of children) {
+    await browser.bookmarks.removeTree(child.id);
+  }
 }
 
 async function saveSession() {
-    console.log("Zen autosave start");
+  console.log("Autosave started");
 
-    // =========================
-    // 1. POBRANIE DANYCH
-    // =========================
-    const rootFolder = await getOrCreateRootFolder();
-    const windows = await browser.windows.getAll({ populate: true });
+  const root = await getRootFolder();
+  await clearFolder(root.id);
 
-    if (!windows || windows.length === 0) {
-        console.warn("No windows found");
-        return;
-    }
+  const windows = await browser.windows.getAll({ populate: true });
 
-    const activeWindow = windows[0];
+  for (const win of windows) {
+    const windowFolder = await browser.bookmarks.create({
+      title: `Window ${win.id}`,
+      parentId: root.id
+    });
 
-    const spaceData = await browser.sessions.getWindowValue(
-        activeWindow.id,
-        "zen-space"
-    );
-
-    const spaceName = spaceData?.title || "Default Space";
-
-    // =========================
-    // 2. STRUKTURA SPACE
-    // =========================
-    const spaceFolder = await getOrCreateSubfolder(
-        rootFolder.id,
-        `Space: ${spaceName}`
-    );
-
-    await clearFolder(spaceFolder.id);
-
-    // =========================
-    // 3. AGREGACJA DANYCH
-    // =========================
     const groups = {};
     const ungrouped = [];
 
-    for (const win of windows) {
-        const tabs = win.tabs || [];
+    for (const tab of win.tabs) {
+      if (!tab.url || !tab.url.startsWith("http")) continue;
 
-        for (const tab of tabs) {
-        if (!tab.url || !tab.url.startsWith("http")) continue;
+      const gid = tab.groupId;
 
-        const groupData = await browser.sessions.getTabValue(
-            tab.id,
-            "zen-tab-group"
-        );
-
-        if (groupData && groupData.groupId) {
-            if (!groups[groupData.groupId]) {
-            groups[groupData.groupId] = {
-                title: groupData.groupTitle || "Unnamed Group",
-                tabs: []
-            };
-            }
-
-            groups[groupData.groupId].tabs.push(tab);
-        } else {
-            ungrouped.push(tab);
+      if (gid && gid !== -1) {
+        if (!groups[gid]) {
+          groups[gid] = {
+            title: `Group ${gid}`,
+            tabs: []
+          };
         }
-        }
+
+        groups[gid].tabs.push(tab);
+      } else {
+        ungrouped.push(tab);
+      }
     }
 
-    // =========================
-    // 4. ZAPIS DO ZAKŁADEK
-    // =========================
-
-    // Grupy Zen
-    for (const groupId of Object.keys(groups)) {
-        const group = groups[groupId];
-
-        const groupFolder = await browser.bookmarks.create({
+    // GROUPS
+    for (const group of Object.values(groups)) {
+      const groupFolder = await browser.bookmarks.create({
         title: group.title,
-        parentId: spaceFolder.id
-        });
+        parentId: windowFolder.id
+      });
 
-        for (const tab of group.tabs) {
+      for (const tab of group.tabs) {
         await browser.bookmarks.create({
-            title: tab.title || tab.url,
-            url: tab.url,
-            parentId: groupFolder.id
+          title: tab.title || tab.url,
+          url: tab.url,
+          parentId: groupFolder.id
         });
-        }
+      }
     }
 
-    // Ungrouped
+    // UNGROUPED
     if (ungrouped.length > 0) {
-        const ungroupedFolder = await browser.bookmarks.create({
+      const otherFolder = await browser.bookmarks.create({
         title: "Ungrouped Tabs",
-        parentId: spaceFolder.id
-        });
+        parentId: windowFolder.id
+      });
 
-        for (const tab of ungrouped) {
+      for (const tab of ungrouped) {
         await browser.bookmarks.create({
-            title: tab.title || tab.url,
-            url: tab.url,
-            parentId: ungroupedFolder.id
+          title: tab.title || tab.url,
+          url: tab.url,
+          parentId: otherFolder.id
         });
-        }
+      }
     }
+  }
 
-    console.log("Zen autosave completed");
+  console.log("Autosave completed");
 }
