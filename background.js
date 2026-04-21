@@ -52,48 +52,47 @@ async function clearFolder(folderId) {
 async function saveSession() {
     console.log("Zen autosave start");
 
+    // =========================
+    // 1. POBRANIE DANYCH
+    // =========================
     const rootFolder = await getOrCreateRootFolder();
-
     const windows = await browser.windows.getAll({ populate: true });
 
-    // Zen ma tylko aktywny Space → bierzemy pierwszy window
+    if (!windows || windows.length === 0) {
+        console.warn("No windows found");
+        return;
+    }
+
+    const activeWindow = windows[0];
+
     const spaceData = await browser.sessions.getWindowValue(
-        windows[0].id,
+        activeWindow.id,
         "zen-space"
     );
 
     const spaceName = spaceData?.title || "Default Space";
 
-    // folder tylko dla tego Space
+    // =========================
+    // 2. STRUKTURA SPACE
+    // =========================
     const spaceFolder = await getOrCreateSubfolder(
         rootFolder.id,
         `Space: ${spaceName}`
     );
 
-    //  czyścimy TYLKO ten Space (nie cały root)
     await clearFolder(spaceFolder.id);
 
-    // Będziemy agregować karty per Space (nie per window)
-    const spaces = {};
+    // =========================
+    // 3. AGREGACJA DANYCH
+    // =========================
+    const groups = {};
+    const ungrouped = [];
 
     for (const win of windows) {
-        // 🔑 Space jest własnością okna
-        const spaceData = await browser.sessions.getWindowValue(
-        win.id,
-        "zen-space"
-        );
+        const tabs = win.tabs || [];
 
-        const spaceName = spaceData?.title || "Default Space";
-
-        if (!spaces[spaceName]) {
-        spaces[spaceName] = {
-            groups: {},
-            ungrouped: []
-        };
-        }
-
-        for (const tab of win.tabs) {
-        if (!tab.url.startsWith("http")) continue;
+        for (const tab of tabs) {
+        if (!tab.url || !tab.url.startsWith("http")) continue;
 
         const groupData = await browser.sessions.getTabValue(
             tab.id,
@@ -101,59 +100,57 @@ async function saveSession() {
         );
 
         if (groupData && groupData.groupId) {
-            if (!spaces[spaceName].groups[groupData.groupId]) {
-            spaces[spaceName].groups[groupData.groupId] = {
+            if (!groups[groupData.groupId]) {
+            groups[groupData.groupId] = {
                 title: groupData.groupTitle || "Unnamed Group",
                 tabs: []
             };
             }
 
-            spaces[spaceName].groups[groupData.groupId].tabs.push(tab);
+            groups[groupData.groupId].tabs.push(tab);
         } else {
-            spaces[spaceName].ungrouped.push(tab);
+            ungrouped.push(tab);
         }
         }
     }
 
-    // 🔨 Teraz budujemy zakładki idealnie jak Zen
-    for (const [spaceName, space] of Object.entries(spaces)) {
-        const spaceFolder = await browser.bookmarks.create({
-            title: `Space: ${spaceName}`,
-            parentId: spaceFolder.id
-        });
+    // =========================
+    // 4. ZAPIS DO ZAKŁADEK
+    // =========================
 
-        // Grupy
-        for (const group of Object.values(space.groups)) {
+    // Grupy Zen
+    for (const groupId of Object.keys(groups)) {
+        const group = groups[groupId];
+
         const groupFolder = await browser.bookmarks.create({
-            title: group.title,
-            parentId: spaceFolder.id
+        title: group.title,
+        parentId: spaceFolder.id
         });
 
         for (const tab of group.tabs) {
-            await browser.bookmarks.create({
-            title: tab.title,
+        await browser.bookmarks.create({
+            title: tab.title || tab.url,
             url: tab.url,
             parentId: groupFolder.id
-            });
-        }
-        }
-
-        // Karty bez grup
-        if (space.ungrouped.length > 0) {
-        const otherFolder = await browser.bookmarks.create({
-            title: "Ungrouped Tabs",
-            parentId: spaceFolder.id
         });
-
-        for (const tab of space.ungrouped) {
-            await browser.bookmarks.create({
-            title: tab.title,
-            url: tab.url,
-            parentId: otherFolder.id
-            });
-        }
         }
     }
 
-    console.log("Zen autosave done");
+    // Ungrouped
+    if (ungrouped.length > 0) {
+        const ungroupedFolder = await browser.bookmarks.create({
+        title: "Ungrouped Tabs",
+        parentId: spaceFolder.id
+        });
+
+        for (const tab of ungrouped) {
+        await browser.bookmarks.create({
+            title: tab.title || tab.url,
+            url: tab.url,
+            parentId: ungroupedFolder.id
+        });
+        }
+    }
+
+    console.log("Zen autosave completed");
 }
