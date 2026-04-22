@@ -78,12 +78,54 @@ function getWindowFingerprint(tabs) {
 
     return Math.abs(hash).toString(16).slice(0, 6);
 }
+async function findMatchingWindowFolder(rootId, tabs) {
+    const children = await browser.bookmarks.getChildren(rootId);
+
+    const currentUrls = tabs
+        .filter(t => t.url && t.url.startsWith("http"))
+        .slice(3) // ignorujemy pierwsze 3
+        .map(t => t.url);
+
+    for (const child of children) {
+        if (child.url) continue; // tylko foldery
+
+        const savedUrls = await getAllUrlsFromFolder(child.id);
+
+        const matches = currentUrls.filter(url => savedUrls.includes(url));
+
+        // jeśli >50% URL się pokrywa → to ten Space
+        if (matches.length > currentUrls.length * 0.5) {
+        return child;
+        }
+    }
+
+    return null;
+}
+
+async function getAllUrlsFromFolder(folderId) {
+    const tree = await browser.bookmarks.getSubTree(folderId);
+    const urls = [];
+
+    function walk(nodes) {
+        for (const node of nodes) {
+        if (node.url) urls.push(node.url);
+        if (node.children) walk(node.children);
+        }
+    }
+
+    walk(tree);
+    return urls;
+}
 
 async function updateWindow(win, rootId) {
-    const fingerprint = getWindowFingerprint(win.tabs);
-    const folderTitle = `Window [${fingerprint}]`;
+    let windowFolder = await findMatchingWindowFolder(rootId, win.tabs);
 
-    const windowFolder = await getOrCreateSubfolder(rootId, folderTitle);
+    if (!windowFolder) {
+        windowFolder = await browser.bookmarks.create({
+            title: `Window ${Date.now()}`,
+            parentId: rootId
+        });
+    }
 
     await clearFolder(windowFolder.id);
 
