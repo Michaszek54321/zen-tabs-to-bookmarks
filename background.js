@@ -85,23 +85,14 @@ async function updateWindow(win, rootId) {
 
     const windowFolder = await getOrCreateSubfolder(rootId, folderTitle);
 
-    const groups = new Map();
-    const ungrouped = [];
-
     await clearFolder(windowFolder.id);
-
-    // Najpierw zapisujemy ungrouped jako luźne zakładki
-    for (const tab of ungrouped) {
-        await browser.bookmarks.create({
-            title: tab.title || tab.url,
-            url: tab.url,
-            parentId: windowFolder.id
-        });
-    }
 
     const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
 
+    const groups = new Map();
+    const ungrouped = [];
 
+    // NAJPIERW budujemy strukturę
     for (const tab of sortedTabs) {
         if (!tab.url || !tab.url.startsWith("http")) continue;
 
@@ -115,6 +106,16 @@ async function updateWindow(win, rootId) {
         }
     }
 
+    // TERAZ zapisujemy ungrouped jako luźne zakładki
+    for (const tab of ungrouped) {
+        await browser.bookmarks.create({
+        title: tab.title || tab.url,
+        url: tab.url,
+        parentId: windowFolder.id
+        });
+    }
+
+    // TERAZ zapisujemy grupy
     let groupNumber = 1;
 
     for (const tabs of groups.values()) {
@@ -133,5 +134,4 @@ async function updateWindow(win, rootId) {
 
         groupNumber++;
     }
-
 }
