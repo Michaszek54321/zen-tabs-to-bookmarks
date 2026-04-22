@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "Zen Autosave Session Manager",
-  "version": "3.0",
-  "description": "Live autosave of Zen/Firefox tabs into structured bookmarks.",
+  "name": "Zen Autosave Session",
+  "version": "4.0",
+  "description": "Stable autosave of Zen/Firefox tabs into structured bookmarks.",
 
   "permissions": [
     "tabs",

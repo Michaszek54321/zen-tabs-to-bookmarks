@@ -38,7 +38,15 @@ function scheduleSave() {
     }, DEBOUNCE_MS);
 }
 
+function getEssentialUrlsFromTabs(tabs) {
+    const sorted = [...tabs].sort((a, b) => a.index - b.index);
 
+    const firstThreePinned = sorted
+        .filter(t => t.pinned && t.url && t.url.startsWith("http"))
+        .slice(0, 3);
+
+    return new Set(firstThreePinned.map(t => t.url));
+}
 
 async function getRootFolder() {
     const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
@@ -97,6 +105,8 @@ function getWindowFingerprint(tabs) {
 }
 
 async function findMatchingWindowFolder(rootId, tabs) {
+    const ESSENTIAL_URLS = getEssentialUrlsFromTabs(tabs);
+
     const children = await browser.bookmarks.getChildren(rootId);
 
     const currentUrls = tabs
@@ -105,7 +115,7 @@ async function findMatchingWindowFolder(rootId, tabs) {
             t.url.startsWith("http") &&
             !ESSENTIAL_URLS.has(t.url)
         )
-        .map(t => t.url);   
+        .map(t => t.url);
 
     for (const child of children) {
         if (child.url) continue; // tylko foldery
@@ -139,6 +149,8 @@ async function getAllUrlsFromFolder(folderId) {
 }
 
 async function updateWindow(win, rootId) {
+    const ESSENTIAL_URLS = getEssentialUrlsFromTabs(win.tabs);
+
     let windowFolder = await findMatchingWindowFolder(rootId, win.tabs);
 
     if (!windowFolder) {
@@ -157,7 +169,7 @@ async function updateWindow(win, rootId) {
 
     for (const tab of sortedTabs) {
         if (!tab.url || !tab.url.startsWith("http")) continue;
-        if (ESSENTIAL_URLS.has(tab.url)) continue; // TYLKO essentials
+        if (ESSENTIAL_URLS.has(tab.url)) continue; // ignorujemy tylko 3 essentials
 
         if (tab.groupId && tab.groupId !== -1) {
             if (!groups.has(tab.groupId)) {
