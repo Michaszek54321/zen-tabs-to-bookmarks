@@ -12,32 +12,32 @@ browser.tabs.onUpdated.addListener(scheduleSave);
 browser.browserAction.onClicked.addListener(saveSession);
 
 function scheduleSave() {
-  if (saveTimer) clearTimeout(saveTimer);
+    if (saveTimer) clearTimeout(saveTimer);
 
-  saveTimer = setTimeout(() => {
-    const now = Date.now();
-    if (now - lastSave > MIN_INTERVAL) {
-      saveSession();
-      lastSave = now;
-    }
-  }, DEBOUNCE_MS);
+    saveTimer = setTimeout(() => {
+        const now = Date.now();
+        if (now - lastSave > MIN_INTERVAL) {
+        saveSession();
+        lastSave = now;
+        }
+    }, DEBOUNCE_MS);
 }
 
-async function getRootFolder() {
-  const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
+    async function getRootFolder() {
+    const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
 
-  for (const item of existing) {
-    if (!item.url) return item;
-  }
+    for (const item of existing) {
+        if (!item.url) return item;
+    }
 
-  return browser.bookmarks.create({ title: ROOT_TITLE });
+    return browser.bookmarks.create({ title: ROOT_TITLE });
 }
 
 async function clearFolder(folderId) {
-  const children = await browser.bookmarks.getChildren(folderId);
-  for (const child of children) {
-    await browser.bookmarks.removeTree(child.id);
-  }
+    const children = await browser.bookmarks.getChildren(folderId);
+    for (const child of children) {
+        await browser.bookmarks.removeTree(child.id);
+    }
 }
 
 async function saveSession() {
@@ -63,15 +63,30 @@ async function getOrCreateSubfolder(parentId, title) {
     return browser.bookmarks.create({ title, parentId });
 }
 
+function getWindowFingerprint(tabs) {
+    const urls = tabs
+        .filter(t => t.url && t.url.startsWith("http"))
+        .slice(0, 5)
+        .map(t => t.url)
+        .join("|");
+
+    let hash = 0;
+    for (let i = 0; i < urls.length; i++) {
+        hash = (hash << 5) - hash + urls.charCodeAt(i);
+        hash |= 0;
+    }
+
+    return Math.abs(hash).toString(16).slice(0, 6);
+}
+
 async function updateWindow(win, rootId) {
-    const windowFolder = await getOrCreateSubfolder(
-        rootId,
-        `Window ${win.id}`
-    );
+    const fingerprint = getWindowFingerprint(win.tabs);
+    const folderTitle = `Window [${fingerprint}]`;
+
+    const windowFolder = await getOrCreateSubfolder(rootId, folderTitle);
 
     await clearFolder(windowFolder.id);
 
-    // sortujemy taby dokładnie jak na ekranie
     const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
 
     const groups = new Map();
@@ -90,7 +105,6 @@ async function updateWindow(win, rootId) {
         }
     }
 
-    // tworzymy grupy w KOLEJNOŚCI z paska kart
     let groupNumber = 1;
 
     for (const tabs of groups.values()) {
@@ -110,7 +124,6 @@ async function updateWindow(win, rootId) {
         groupNumber++;
     }
 
-    // ungrouped na końcu
     if (ungrouped.length > 0) {
         const ungroupedFolder = await browser.bookmarks.create({
         title: "Ungrouped Tabs",
