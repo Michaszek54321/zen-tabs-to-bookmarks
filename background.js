@@ -156,8 +156,8 @@ async function updateWindow(win, rootId) {
     const ungrouped = [];
 
     for (const tab of sortedTabs) {
-        if (tab.pinned) continue; // KLUCZOWE
         if (!tab.url || !tab.url.startsWith("http")) continue;
+        if (ESSENTIAL_URLS.has(tab.url)) continue; // TYLKO essentials
 
         if (tab.groupId && tab.groupId !== -1) {
             if (!groups.has(tab.groupId)) {
