@@ -83,7 +83,8 @@ async function findMatchingWindowFolder(rootId, tabs) {
 
     const currentUrls = tabs
         .filter(t => t.url && t.url.startsWith("http"))
-        .slice(3) // ignorujemy pierwsze 3
+        .sort((a, b) => a.index - b.index)
+        .slice(3)
         .map(t => t.url);
 
     for (const child of children) {
@@ -129,7 +130,8 @@ async function updateWindow(win, rootId) {
 
     await clearFolder(windowFolder.id);
 
-    const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
+    // ignorujemy pierwsze 3 karty wszędzie
+    const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index).slice(3); 
 
     const groups = new Map();
     const ungrouped = [];
