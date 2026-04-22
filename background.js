@@ -1,5 +1,6 @@
 let saveTimer = null;
 let lastSave = 0;
+let ESSENTIAL_URLS = new Set();
 
 const DEBOUNCE_MS = 5000;
 const MIN_INTERVAL = 15000;
@@ -10,6 +11,20 @@ browser.tabs.onRemoved.addListener(scheduleSave);
 browser.tabs.onUpdated.addListener(scheduleSave);
 
 browser.browserAction.onClicked.addListener(saveSession);
+
+async function detectEssentials() {
+    const windows = await browser.windows.getAll({ populate: true });
+    if (windows.length === 0) return;
+
+    const urls = windows[0].tabs
+        .filter(t => t.url && t.pinned) // essentials są pinned
+        .map(t => t.url);
+
+    ESSENTIAL_URLS = new Set(urls);
+    console.log("Detected essentials:", ESSENTIAL_URLS);
+}
+
+detectEssentials();
 
 function scheduleSave() {
     if (saveTimer) clearTimeout(saveTimer);
@@ -23,7 +38,9 @@ function scheduleSave() {
     }, DEBOUNCE_MS);
 }
 
-    async function getRootFolder() {
+
+
+async function getRootFolder() {
     const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
 
     for (const item of existing) {
@@ -78,14 +95,17 @@ function getWindowFingerprint(tabs) {
 
     return Math.abs(hash).toString(16).slice(0, 6);
 }
+
 async function findMatchingWindowFolder(rootId, tabs) {
     const children = await browser.bookmarks.getChildren(rootId);
 
     const currentUrls = tabs
-        .filter(t => t.url && t.url.startsWith("http"))
-        .sort((a, b) => a.index - b.index)
-        .slice(3)
-        .map(t => t.url);
+        .filter(t =>
+            t.url &&
+            t.url.startsWith("http") &&
+            !ESSENTIAL_URLS.has(t.url)
+        )
+        .map(t => t.url);   
 
     for (const child of children) {
         if (child.url) continue; // tylko foldery
@@ -130,23 +150,22 @@ async function updateWindow(win, rootId) {
 
     await clearFolder(windowFolder.id);
 
-    // ignorujemy pierwsze 3 karty wszędzie
-    const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index).slice(3); 
+    const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
 
     const groups = new Map();
     const ungrouped = [];
 
-    // NAJPIERW budujemy strukturę
     for (const tab of sortedTabs) {
+        if (tab.pinned) continue; // KLUCZOWE
         if (!tab.url || !tab.url.startsWith("http")) continue;
 
         if (tab.groupId && tab.groupId !== -1) {
-        if (!groups.has(tab.groupId)) {
-            groups.set(tab.groupId, []);
-        }
-        groups.get(tab.groupId).push(tab);
+            if (!groups.has(tab.groupId)) {
+                groups.set(tab.groupId, []);
+            }
+            groups.get(tab.groupId).push(tab);
         } else {
-        ungrouped.push(tab);
+            ungrouped.push(tab);
         }
     }
 
