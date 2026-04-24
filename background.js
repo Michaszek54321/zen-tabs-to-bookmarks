@@ -2,9 +2,18 @@ let saveTimer = null;
 let lastSave = 0;
 let ESSENTIAL_URLS = new Set();
 
-const DEBOUNCE_MS = 5000;
 const MIN_INTERVAL = 15000;
 const ROOT_TITLE = "Latest Autosave";
+
+let SETTINGS = { delay: 5 };
+
+async function loadSettings() {
+    const data = await browser.storage.local.get({ delay: 5 });
+    SETTINGS.delay = data.delay;
+}
+
+loadSettings();
+browser.storage.onChanged.addListener(loadSettings);
 
 browser.tabs.onCreated.addListener(scheduleSave);
 browser.tabs.onRemoved.addListener(scheduleSave);
@@ -26,16 +35,16 @@ async function detectEssentials() {
 
 detectEssentials();
 
-function scheduleSave() {
+function scheduleSave(tab) {
     if (saveTimer) clearTimeout(saveTimer);
 
-    saveTimer = setTimeout(() => {
+    saveTimer = setTimeout(async () => {
         const now = Date.now();
-        if (now - lastSave > MIN_INTERVAL) {
-        saveSession();
-        lastSave = now;
+        if (now - lastSaveTime > MIN_INTERVAL_MS) {
+            await saveSession();
+            lastSaveTime = now;
         }
-    }, DEBOUNCE_MS);
+    }, SETTINGS.delay * 1000);
 }
 
 function getEssentialUrlsFromTabs(tabs) {

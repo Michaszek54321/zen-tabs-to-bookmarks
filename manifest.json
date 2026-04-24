@@ -1,21 +1,22 @@
 {
   "manifest_version": 2,
   "name": "Zen Autosave Session",
-  "version": "4.0",
-  "description": "Stable autosave of Zen/Firefox tabs into structured bookmarks.",
+  "version": "5.1",
 
   "permissions": [
     "tabs",
     "bookmarks",
-    "tabGroups"
+    "tabGroups",
+    "storage"
   ],
 
   "background": {
     "scripts": ["background.js"]
   },
 
-  "browser_action": {
-    "default_title": "Save session"
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
 
   "applications": {
