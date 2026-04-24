@@ -46,9 +46,9 @@ function scheduleSave(tab) {
 
     saveTimer = setTimeout(async () => {
         const now = Date.now();
-        if (now - lastSaveTime > MIN_INTERVAL_MS) {
+        if (now - lastSave > MIN_INTERVAL) {
             await saveSession();
-            lastSaveTime = now;
+            lastSave = now;
         }
     }, SETTINGS.delay * 1000);
 }
