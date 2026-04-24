@@ -81,6 +81,7 @@ async function clearFolder(folderId) {
 }
 
 async function saveSession() {
+    const startTime = Date.now();
     console.log("Autosave started");
 
     const root = await getRootFolder();
@@ -91,6 +92,7 @@ async function saveSession() {
     }
 
     console.log("Autosave completed");
+    console.log("Autosave time:", Date.now() - startTime);
 }
 
 async function getOrCreateSubfolder(parentId, title) {
