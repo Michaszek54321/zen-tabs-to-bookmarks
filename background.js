@@ -5,13 +5,19 @@ let ESSENTIAL_URLS = new Set();
 const MIN_INTERVAL = 15000;
 const ROOT_TITLE = "Latest Autosave";
 
-let SETTINGS = { delay: 5 };
-
+let SETTINGS = {
+    delay: 5,
+    essentials: 3
+};
 async function loadSettings() {
-    const data = await browser.storage.local.get({ delay: 5 });
-    SETTINGS.delay = data.delay;
-}
+    const data = await browser.storage.local.get({
+        delay: 5,
+        essentials: 3
+    });
 
+    SETTINGS.delay = data.delay;
+    SETTINGS.essentials = data.essentials;
+}
 loadSettings();
 browser.storage.onChanged.addListener(loadSettings);
 
@@ -50,11 +56,11 @@ function scheduleSave(tab) {
 function getEssentialUrlsFromTabs(tabs) {
     const sorted = [...tabs].sort((a, b) => a.index - b.index);
 
-    const firstThreePinned = sorted
+    const EssentialTabs = sorted
         .filter(t => t.pinned && t.url && t.url.startsWith("http"))
-        .slice(0, 3);
+        .slice(0, SETTINGS.essentials);
 
-    return new Set(firstThreePinned.map(t => t.url));
+    return new Set(EssentialTabs.map(t => t.url));
 }
 
 async function getRootFolder() {
