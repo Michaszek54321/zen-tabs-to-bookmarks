@@ -24,17 +24,23 @@ browser.storage.onChanged.addListener(loadSettings);
 let DEVICE_NAME = null;
 
 async function initDeviceName() {
-  // Firefox Sync przechowuje nazwę urządzenia tutaj
-    const data = await browser.storage.sync.get("services.sync.client.name");
+    try {
+        const info = await browser.identity.getProfileUserInfo();
 
-    if (data["services.sync.client.name"]) {
-        DEVICE_NAME = data["services.sync.client.name"];
-        return;
+        if (info && info.email) {
+            // Firefox buduje nazwę urządzenia jako:
+            // "Desktop-Michał", "MacBook-Michał" itd.
+            const profile = await browser.runtime.getBrowserInfo();
+            DEVICE_NAME = `${profile.name}-${info.email.split("@")[0]}`;
+            return;
+        }
+    } catch (e) {
+        console.log("No identity info");
     }
 
-    // fallback gdy Sync wyłączony
-    const info = await browser.runtime.getBrowserInfo();
-    DEVICE_NAME = `${info.name}-${Math.random().toString(36).slice(2,6)}`;
+    // fallback gdy brak Sync / brak konta
+    const profile = await browser.runtime.getBrowserInfo();
+    DEVICE_NAME = `${profile.name}-Local`;
 }
 
 initDeviceName();
