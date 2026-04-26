@@ -1,33 +1,87 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <style>
-            body { font-family: sans-serif; padding: 12px; width: 260px; }
-            label { display:block; margin: 8px 0; font-size: 13px; }
-            input { width: 100%; box-sizing: border-box; }
-            button { margin-top: 10px; width: 100%; padding: 6px; }
-        </style>
-    </head>
-    <body>
-        <label>
-            Autosave delay (s)
-            <input type="number" id="delay" min="3">
-        </label>
+<head>
+<meta charset="utf-8" />
+<style>
+  body {
+    margin: 0;
+    padding: 14px;
+    width: 280px;
+    font-family: system-ui, sans-serif;
+    background: #0f1115;
+    color: #e6e6e6;
+  }
 
-        <label>
-            Essential pinned tabs to ignore
-            <input type="number" id="essentials" min="0">
-        </label>
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
 
-        <label>
-            Device / folder name
-            <input type="text" id="deviceName">
-        </label>
+  label {
+    font-size: 12px;
+    margin-top: 10px;
+    display: block;
+    opacity: 0.85;
+  }
 
-        <button id="saveSettings">Save settings</button>
-        <button id="saveNow">Save now</button>
+  input {
+    width: 95%;
+    margin-top: 4px;
+    padding: 6px 8px;
+    background: #1b1f27;
+    border: 1px solid #2c313c;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 13px;
+  }
 
-        <script src="popup.js"></script>
-    </body>
+  button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  #saveSettings {
+    background: #2c7df0;
+    color: white;
+  }
+
+  #saveNow {
+    background: #2ecc71;
+    color: black;
+  }
+
+  button:hover {
+    filter: brightness(1.1);
+  }
+</style>
+</head>
+<body>
+
+<h3>Zen Autosave</h3>
+
+<label>Autosave delay (s)
+  <input type="number" id="delay" min="3">
+</label>
+
+<label>Essential pinned tabs to ignore
+  <input type="number" id="essentials" min="0">
+</label>
+
+<label>Device / folder name
+  <input type="text" id="deviceName">
+</label>
+
+<button id="saveSettings">Save settings</button>
+<button id="saveNow">Save now</button>
+
+<script src="popup.js"></script>
+</body>
 </html>

@@ -1,34 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <title>Zen Autosave – Settings</title>
-    <style>
-        body { font-family: sans-serif; padding: 24px; }
-        label { display:block; margin: 16px 0; }
-        input { font-size: 16px; padding: 4px; }
-    </style>
-    </head>
-    <body>
-    <h2>Autosave Settings</h2>
+<meta charset="utf-8" />
+<style>
+  body {
+    margin: 0;
+    background: #0f1115;
+    color: #e6e6e6;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
 
-    <label>
-        Device / Computer name (folder name in bookmarks):
-        <input type="text" id="deviceName" />
-    </label>
+  .card {
+    width: 420px;
+    background: #1b1f27;
+    padding: 28px;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
 
-    <label>
-        Autosave delay (seconds):
-        <input type="number" id="delay" min="3" />
-    </label>
+  h2 {
+    margin-top: 0;
+    text-align: center;
+  }
 
-    <label>
-        Essential tabs to ignore (first pinned tabs):
-        <input type="number" id="essentials" min="0" />
-    </label>
+  label {
+    display: block;
+    margin-top: 18px;
+    font-size: 14px;
+    opacity: 0.9;
+  }
 
-    <button id="save">Save</button>
+  input {
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px;
+    background: #11151c;
+    border: 1px solid #2c313c;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+  }
 
-    <script src="options.js"></script>
+  button {
+    margin-top: 24px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #2c7df0;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button:hover {
+    filter: brightness(1.1);
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Zen Autosave Settings</h2>
+
+  <label>Autosave delay (seconds)
+    <input type="number" id="delay" min="3">
+  </label>
+
+  <label>Essential pinned tabs to ignore
+    <input type="number" id="essentials" min="0">
+  </label>
+
+  <label>Device / folder name
+    <input type="text" id="deviceName">
+  </label>
+
+  <button id="save">Save settings</button>
+</div>
+
+<script src="options.js"></script>
 </body>
 </html>
