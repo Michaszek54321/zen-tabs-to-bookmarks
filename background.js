@@ -62,6 +62,7 @@ async function detectEssentials() {
 detectEssentials();
 
 function scheduleSave(tab) {
+    console.log("Tab event detected, scheduling save...");
     if (saveTimer) clearTimeout(saveTimer);
 
     saveTimer = setTimeout(async () => {
@@ -90,7 +91,6 @@ async function getMachineRootFolder() {
 
     const folder = await browser.bookmarks.create({
         title: MACHINE_NAME,
-        parentId: "toolbar_____"
     });
 
     return folder.id;
