@@ -2,7 +2,7 @@ let saveTimer = null;
 let lastSave = 0;
 let ESSENTIAL_URLS = new Set();
 
-const MIN_INTERVAL = 15000;
+const MIN_INTERVAL = 7000;
 const ROOT_TITLE = "Latest Autosave";
 
 let SETTINGS = {
@@ -28,7 +28,7 @@ browser.tabs.onCreated.addListener(scheduleSave);
 browser.tabs.onRemoved.addListener(scheduleSave);
 browser.tabs.onUpdated.addListener(scheduleSave);
 
-browser.browserAction.onClicked.addListener(saveSession);
+// browser.browserAction.onClicked.addListener(saveSession);
 
 async function detectEssentials() {
     const windows = await browser.windows.getAll({ populate: true });

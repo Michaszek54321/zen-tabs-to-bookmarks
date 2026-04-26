@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <style>
+            body { font-family: sans-serif; padding: 12px; width: 260px; }
+            label { display:block; margin: 8px 0; font-size: 13px; }
+            input { width: 100%; box-sizing: border-box; }
+            button { margin-top: 10px; width: 100%; padding: 6px; }
+        </style>
+    </head>
+    <body>
+        <label>
+            Autosave delay (s)
+            <input type="number" id="delay" min="3">
+        </label>
+
+        <label>
+            Essential pinned tabs to ignore
+            <input type="number" id="essentials" min="0">
+        </label>
+
+        <label>
+            Device / folder name
+            <input type="text" id="deviceName">
+        </label>
+
+        <button id="saveSettings">Save settings</button>
+        <button id="saveNow">Save now</button>
+
+        <script src="popup.js"></script>
+    </body>
+</html>
