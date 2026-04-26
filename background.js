@@ -200,53 +200,73 @@ async function updateWindow(win, rootId) {
         });
     }
 
-    await clearFolder(windowFolder.id);
-
     const sortedTabs = [...win.tabs].sort((a, b) => a.index - b.index);
 
-    const groups = new Map();
-    const ungrouped = [];
+    // ===== AKTUALNY STAN TABS =====
+    const desired = [];
 
     for (const tab of sortedTabs) {
         if (!tab.url || !tab.url.startsWith("http")) continue;
-        if (ESSENTIAL_URLS.has(tab.url)) continue; // ignorujemy tylko 3 essentials
+        if (ESSENTIAL_URLS.has(tab.url)) continue;
 
-        if (tab.groupId && tab.groupId !== -1) {
-            if (!groups.has(tab.groupId)) {
-                groups.set(tab.groupId, []);
-            }
-            groups.get(tab.groupId).push(tab);
-        } else {
-            ungrouped.push(tab);
-        }
-    }
-
-    // TERAZ zapisujemy ungrouped jako luźne zakładki
-    for (const tab of ungrouped) {
-        await browser.bookmarks.create({
-        title: tab.title || tab.url,
-        url: tab.url,
-        parentId: windowFolder.id
-        });
-    }
-
-    // TERAZ zapisujemy grupy
-    let groupNumber = 1;
-
-    for (const tabs of groups.values()) {
-        const groupFolder = await browser.bookmarks.create({
-        title: `Group ${groupNumber}`,
-        parentId: windowFolder.id
-        });
-
-        for (const tab of tabs) {
-        await browser.bookmarks.create({
-            title: tab.title || tab.url,
+        desired.push({
             url: tab.url,
-            parentId: groupFolder.id
+            title: tab.title || tab.url,
+            groupId: tab.groupId
         });
+    }
+
+    // ===== OBECNY STAN BOOKMARKÓW =====
+    const existingMap = new Map(); // url -> bookmark node
+    const existingTree = await browser.bookmarks.getSubTree(windowFolder.id);
+
+    function walk(nodes) {
+        for (const n of nodes) {
+            if (n.url) existingMap.set(n.url, n);
+            if (n.children) walk(n.children);
+        }
+    }
+    walk(existingTree);
+
+    const desiredUrls = new Set(desired.map(d => d.url));
+
+    // ===== USUŃ NIEISTNIEJĄCE =====
+    for (const [url, node] of existingMap.entries()) {
+        if (!desiredUrls.has(url)) {
+            await browser.bookmarks.remove(node.id);
+        }
+    }
+
+    // ===== GRUPY =====
+    const groupFolders = new Map(); // groupId -> folderId
+    let groupCounter = 1;
+
+    for (const d of desired) {
+        if (d.groupId === -1) continue;
+
+        if (!groupFolders.has(d.groupId)) {
+            const folder = await browser.bookmarks.create({
+                title: `Group ${groupCounter++}`,
+                parentId: windowFolder.id
+            });
+            groupFolders.set(d.groupId, folder.id);
+        }
+    }
+
+    // ===== DODAJ NOWE =====
+    for (const d of desired) {
+        if (existingMap.has(d.url)) continue;
+
+        let parentId = windowFolder.id;
+
+        if (d.groupId !== -1 && groupFolders.has(d.groupId)) {
+            parentId = groupFolders.get(d.groupId);
         }
 
-        groupNumber++;
+        await browser.bookmarks.create({
+            title: d.title,
+            url: d.url,
+            parentId
+        });
     }
 }
