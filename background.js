@@ -21,25 +21,23 @@ async function loadSettings() {
 loadSettings();
 browser.storage.onChanged.addListener(loadSettings);
 
-let MACHINE_NAME = null;
+let DEVICE_NAME = null;
 
-async function initMachineName() {
-    const stored = await browser.storage.local.get("machineName");
+async function initDeviceName() {
+  // Firefox Sync przechowuje nazwę urządzenia tutaj
+    const data = await browser.storage.sync.get("services.sync.client.name");
 
-    if (stored.machineName) {
-        MACHINE_NAME = stored.machineName;
+    if (data["services.sync.client.name"]) {
+        DEVICE_NAME = data["services.sync.client.name"];
         return;
     }
 
+    // fallback gdy Sync wyłączony
     const info = await browser.runtime.getBrowserInfo();
-    const random = Math.random().toString(36).slice(2, 6);
-
-    MACHINE_NAME = `${info.name}-${random}`;
-
-    await browser.storage.local.set({ machineName: MACHINE_NAME });
+    DEVICE_NAME = `${info.name}-${Math.random().toString(36).slice(2,6)}`;
 }
 
-initMachineName();
+initDeviceName();
 
 browser.tabs.onCreated.addListener(scheduleSave);
 browser.tabs.onRemoved.addListener(scheduleSave);
@@ -84,13 +82,15 @@ function getEssentialUrlsFromTabs(tabs) {
     return new Set(EssentialTabs.map(t => t.url));
 }
 
-async function getMachineRootFolder() {
-    const tree = await browser.bookmarks.search({ title: MACHINE_NAME });
+async function getDeviceRootFolder() {
+    const found = await browser.bookmarks.search({ title: DEVICE_NAME });
 
-    if (tree.length > 0) return tree[0].id;
+    for (const f of found) {
+        if (!f.url) return f;
+    }
 
     const folder = await browser.bookmarks.create({
-        title: MACHINE_NAME,
+        title: DEVICE_NAME
     });
 
     return folder.id;
@@ -107,7 +107,7 @@ async function saveSession() {
     const startTime = Date.now();
     console.log("Autosave started");
 
-    const root = await getMachineRootFolder();
+    const root = await getDeviceRootFolder();
     const windows = await browser.windows.getAll({ populate: true });
 
     for (const win of windows) {
