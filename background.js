@@ -7,43 +7,22 @@ const ROOT_TITLE = "Latest Autosave";
 
 let SETTINGS = {
     delay: 5,
-    essentials: 3
+    essentials: 3,
+    deviceName: "My-Computer"
 };
+
 async function loadSettings() {
     const data = await browser.storage.local.get({
         delay: 5,
-        essentials: 3
+        essentials: 3,
+        deviceName: "My-Computer"
     });
 
-    SETTINGS.delay = data.delay;
-    SETTINGS.essentials = data.essentials;
+    SETTINGS = data;
 }
+
 loadSettings();
 browser.storage.onChanged.addListener(loadSettings);
-
-let DEVICE_NAME = null;
-
-async function initDeviceName() {
-    try {
-        const info = await browser.identity.getProfileUserInfo();
-
-        if (info && info.email) {
-            // Firefox buduje nazwę urządzenia jako:
-            // "Desktop-Michał", "MacBook-Michał" itd.
-            const profile = await browser.runtime.getBrowserInfo();
-            DEVICE_NAME = `${profile.name}-${info.email.split("@")[0]}`;
-            return;
-        }
-    } catch (e) {
-        console.log("No identity info");
-    }
-
-    // fallback gdy brak Sync / brak konta
-    const profile = await browser.runtime.getBrowserInfo();
-    DEVICE_NAME = `${profile.name}-Local`;
-}
-
-initDeviceName();
 
 browser.tabs.onCreated.addListener(scheduleSave);
 browser.tabs.onRemoved.addListener(scheduleSave);
@@ -89,14 +68,14 @@ function getEssentialUrlsFromTabs(tabs) {
 }
 
 async function getDeviceRootFolder() {
-    const found = await browser.bookmarks.search({ title: DEVICE_NAME });
+    const found = await browser.bookmarks.search({ title: SETTINGS.deviceName });
 
     for (const f of found) {
-        if (!f.url) return f;
+        if (!f.url) return f.id;
     }
 
     const folder = await browser.bookmarks.create({
-        title: DEVICE_NAME
+        title: SETTINGS.deviceName
     });
 
     return folder.id;
