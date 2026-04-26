@@ -238,10 +238,14 @@ async function updateWindow(win, rootId) {
     }
 
     // ===== GRUPY =====
-    const groupFolders = new Map(); // groupId -> folderId
+    // ===== WYZNACZ KTÓRE URL SĄ NOWE =====
+    const newItems = desired.filter(d => !existingMap.has(d.url));
+
+    // ===== GRUPY TYLKO DLA NOWYCH =====
+    const groupFolders = new Map();
     let groupCounter = 1;
 
-    for (const d of desired) {
+    for (const d of newItems) {
         if (d.groupId === -1) continue;
 
         if (!groupFolders.has(d.groupId)) {
@@ -254,9 +258,7 @@ async function updateWindow(win, rootId) {
     }
 
     // ===== DODAJ NOWE =====
-    for (const d of desired) {
-        if (existingMap.has(d.url)) continue;
-
+    for (const d of newItems) {
         let parentId = windowFolder.id;
 
         if (d.groupId !== -1 && groupFolders.has(d.groupId)) {
