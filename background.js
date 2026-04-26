@@ -92,7 +92,7 @@ async function saveSession() {
     }
 
     console.log("Autosave completed");
-    console.log("Autosave time:", Date.now() - startTime);
+    console.log("Autosave time:", (Date.now() - startTime) + "ms");
 }
 
 async function getOrCreateSubfolder(parentId, title) {
@@ -172,7 +172,7 @@ async function updateWindow(win, rootId) {
 
     if (!windowFolder) {
         windowFolder = await browser.bookmarks.create({
-            title: `Window ${Date.now()}`,
+            title: `Space ${Date.now()}`,
             parentId: rootId
         });
     }
