@@ -21,6 +21,26 @@ async function loadSettings() {
 loadSettings();
 browser.storage.onChanged.addListener(loadSettings);
 
+let MACHINE_NAME = null;
+
+async function initMachineName() {
+    const stored = await browser.storage.local.get("machineName");
+
+    if (stored.machineName) {
+        MACHINE_NAME = stored.machineName;
+        return;
+    }
+
+    const info = await browser.runtime.getBrowserInfo();
+    const random = Math.random().toString(36).slice(2, 6);
+
+    MACHINE_NAME = `${info.name}-${random}`;
+
+    await browser.storage.local.set({ machineName: MACHINE_NAME });
+}
+
+initMachineName();
+
 browser.tabs.onCreated.addListener(scheduleSave);
 browser.tabs.onRemoved.addListener(scheduleSave);
 browser.tabs.onUpdated.addListener(scheduleSave);
@@ -63,14 +83,17 @@ function getEssentialUrlsFromTabs(tabs) {
     return new Set(EssentialTabs.map(t => t.url));
 }
 
-async function getRootFolder() {
-    const existing = await browser.bookmarks.search({ title: ROOT_TITLE });
+async function getMachineRootFolder() {
+    const tree = await browser.bookmarks.search({ title: MACHINE_NAME });
 
-    for (const item of existing) {
-        if (!item.url) return item;
-    }
+    if (tree.length > 0) return tree[0].id;
 
-    return browser.bookmarks.create({ title: ROOT_TITLE });
+    const folder = await browser.bookmarks.create({
+        title: MACHINE_NAME,
+        parentId: "toolbar_____"
+    });
+
+    return folder.id;
 }
 
 async function clearFolder(folderId) {
@@ -84,11 +107,11 @@ async function saveSession() {
     const startTime = Date.now();
     console.log("Autosave started");
 
-    const root = await getRootFolder();
+    const root = await getMachineRootFolder();
     const windows = await browser.windows.getAll({ populate: true });
 
     for (const win of windows) {
-        await updateWindow(win, root.id);
+        await updateWindow(win, root);
     }
 
     console.log("Autosave completed");
