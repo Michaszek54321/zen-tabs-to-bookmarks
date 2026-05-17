@@ -6,15 +6,7 @@ Zen doesnt have perfect space and groups synchronization between devices (my lap
 
 It's not perfect. Zen doesn't have api for reading space and group name so correct spaces are decided on their contents and then named custom ID. Groups are numbered by their order from the top.
 
-It also ignores in saving first 3 tabs from essentials. 
-
-ToDo:
-- make a way for controling some options.
-- make it open new tabs from other device
+You can set the name of your device, time until autosave and number of tabs in essentials in the extentnion settings or popup.
 
 ### Install
-To install either download repo and add it in about:debugging, that way you can edit the code yourself
-or
-download the .xpi file
-go to about:addons
-click on 3 dots and install from file and choose the .xpi file
+To install download repo and add it in about:debugging, that way you can edit the code yourself
